@@ -131,6 +131,9 @@ absl::optional<Status::GrpcStatus> Common::getGrpcStatus(const Http::ResponseTra
                            : absl::nullopt},
   }};
 
+  // its a string probably:
+  const auto grpc_details = Grpc::Common::getGrpcMessage(trailers);
+  ENVOY_LOG_MISC(warn, "OOO: {}", grpc_details);
   for (const auto& optional_status : optional_statuses) {
     if (optional_status.has_value()) {
       return optional_status;
@@ -152,9 +155,13 @@ Common::getGrpcStatusDetailsBin(const Http::HeaderMap& trailers) {
     return absl::nullopt;
   }
 
+  // OHAD:
   // Some implementations use non-padded base64 encoding for grpc-status-details-bin.
   // This is effectively a trusted header so using the first value is fine.
+  ENVOY_LOG_MISC(warn, "OOO2: {}", details_header[0]->value().getStringView());
   auto decoded_value = Base64::decodeWithoutPadding(details_header[0]->value().getStringView());
+  ENVOY_LOG_MISC(warn, "OOO2: {}", decoded_value);
+
   if (decoded_value.empty()) {
     return absl::nullopt;
   }

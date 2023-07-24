@@ -113,6 +113,11 @@ void AsyncStreamImpl::initialize(bool buffer_body_for_retry) {
 void AsyncStreamImpl::onHeaders(Http::ResponseHeaderMapPtr&& headers, bool end_stream) {
   const auto http_response_status = Http::Utility::getResponseStatus(*headers);
   const auto grpc_status = Common::getGrpcStatus(*headers);
+  // OHAD:
+  const auto grpc_details = Common::getGrpcStatusDetailsBin(*headers);
+  //ENVOY_LOG_MISC(warn, "OOO: {}", grpc_details);
+
+
   callbacks_.onReceiveInitialMetadata(end_stream ? Http::ResponseHeaderMapImpl::create()
                                                  : std::move(headers));
   if (http_response_status != enumToInt(Http::Code::OK)) {
@@ -167,6 +172,9 @@ void AsyncStreamImpl::onData(Buffer::Instance& data, bool end_stream) {
 // TODO(htuch): match Google gRPC base64 encoding behavior for *-bin headers, see
 // https://github.com/envoyproxy/envoy/pull/2444#discussion_r163914459.
 void AsyncStreamImpl::onTrailers(Http::ResponseTrailerMapPtr&& trailers) {
+  //OHAD
+  const auto grpc_details = Common::getGrpcStatusDetailsBin(*trailers);
+  // ENVOY_LOG_MISC(warn, "OOO: {}", grpc_details);
   auto grpc_status = Common::getGrpcStatus(*trailers);
   const std::string grpc_message = Common::getGrpcMessage(*trailers);
   callbacks_.onReceiveTrailingMetadata(std::move(trailers));
@@ -278,6 +286,7 @@ void AsyncRequestImpl::onRemoteClose(Grpc::Status::GrpcStatus status, const std:
 
   if (status != Grpc::Status::WellKnownGrpcStatus::Ok) {
     current_span_->setTag(Tracing::Tags::get().Error, Tracing::Tags::get().True);
+    // will be called with 555:
     callbacks_.onFailure(status, message, *current_span_);
   } else if (response_ == nullptr) {
     current_span_->setTag(Tracing::Tags::get().Error, Tracing::Tags::get().True);
